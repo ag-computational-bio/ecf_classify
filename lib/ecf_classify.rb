@@ -1,6 +1,8 @@
 require "ecf_classify/version"
 require "ecf_classify/runner"
+require "ecf_classify/hmmer"
 require "ecf_classify/utils"
+require "ecf_classify/zenodo"
 require "tempfile"
 require 'thor'
 
@@ -46,6 +48,11 @@ module EcfClassify
         conserved.close
         conserved.unlink
       end
+    end
+
+    desc "download", "Downloads HMM models from Zenodo"
+    def download
+      EcfClassify::Zenodo.download
     end
 
     no_commands do

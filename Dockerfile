@@ -1,18 +1,18 @@
-FROM python:3.6-alpine as python
+FROM python:3.8-alpine as python
 RUN apk update
-RUN apk add --no-cache make automake gcc g++ subversion python3-dev
+RUN apk add --no-cache make automake gcc g++ subversion python3-dev python3
 
 RUN mkdir /install
 WORKDIR /install
 COPY requirements.txt /requirements.txt
 
-RUN pip3 install --install-option="--prefix=/install" -r /requirements.txt
+RUN pip3 install --prefix=/install -r /requirements.txt
 
 FROM alpine:3.9 as builder
 
 WORKDIR /src/
 RUN apk add --no-cache gcc musl-dev make
-RUN wget http://eddylab.org/software/hmmer/hmmer.tar.gz && tar zxf hmmer.tar.gz && cd hmmer-3.2.1 && ./configure --prefix /src/ && make -j && make install
+RUN wget http://eddylab.org/software/hmmer/hmmer.tar.gz && tar zxf hmmer.tar.gz && cd hmmer-3.* && ./configure --prefix /src/ && make -j && make install
 
 # This file is a template, and might need editing before it works on your project.
 FROM ruby:2.6-alpine as ruby
@@ -32,7 +32,8 @@ RUN gem install bundler
 
 COPY .git .git
 COPY . .
-RUN bundle install --without development test && rake -f Rakefile.prod install
+RUN bundle config set without 'development test'
+RUN bundle install && rake -f Rakefile.prod install
 
 FROM ruby:2.6-alpine
 
@@ -41,15 +42,17 @@ RUN apk add --no-cache --virtual build-deps build-base && \
   apk del build-deps
 
 COPY --from=ruby /usr/local/bundle /usr/local/bundle
-COPY --from=builder /src/bin/hmmscan /usr/bin/
-COPY --from=python /install/lib/python3.6/ /usr/local/lib/python3.6/
+COPY --from=builder /src/bin/hmm* /usr/bin/
+COPY --from=python /install/lib/python3* /usr/local/lib/python3/
 
 
 
-ENV PYTHONPATH=${PYTHONPATH}:/usr/local/lib/python3.6/site-packages/:/usr/local/lib/python3.6/
+ENV PYTHONPATH=${PYTHONPATH}:/usr/local/lib/python3/site-packages/:/usr/local/lib/python3/
 
 # Install build dependencies - required for gems with native dependencies
 
 WORKDIR /
+
+RUN ecf_classify download
 
 CMD ["ecf_classify", "help"]
